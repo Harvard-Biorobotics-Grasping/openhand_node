@@ -38,13 +38,14 @@
 from __future__ import print_function
 import serial
 import time
-import _thread
+import thread as _thread
 import sys, optparse
 import math
 import random
 import ctypes
 import numpy as np
 import IPython
+import pdb
 
 from registerDict import *
 import registerDict
@@ -85,6 +86,7 @@ class USB2Dynamixel_Device():
         return rep
 
     def _open_serial(self, baudrate):
+        # pdb.set_trace()
         try:
             self.servo_dev = serial.Serial(self.dev_name, baudrate, timeout=1.0)
             # Closing the device first seems to prevent "Access Denied" errors on WinXP
