@@ -11,6 +11,8 @@ import numpy as np	#for array handling
 import scipy.io
 import math
 from decimal import Decimal
+import pdb
+import sys 
 
 #Assumptions:
 	#only dynamixel servos being used
@@ -85,17 +87,17 @@ class OpenHand():
 					else:
 						print( "Motor directions not set...")
 				#These would then be the MX and XM motors
-				elif (self.motorDir[i] ==1 and enc > 2048) or (self.motorDir[i] == -1 and enc < 2048):
-					print( "------------FAILSAFE-------------")
-					print( "Failsafe is incorporated to prevent gear shear in Model O")
-					print( "Motor encoder postion: ", enc)
-					input = raw_input("As an XM Motor, we can automatically fix this issue for motor " + str(i) + ", proceed? [ENTER]")
-					self.servos[i].enable_extended_position_control_mode()
-					self.servos[i].move_to_encoder(self.servos[i].settings['max_encoder']+100)
-					time.sleep(self.pause)
-					self.servos[i].disable_extended_position_control_mode()
-					time.sleep(self.pause)
-					print( "Fixed servo from ID: "+repr(servo_ids[i]))
+				# elif (self.motorDir[i] ==1 and enc > 2048) or (self.motorDir[i] == -1 and enc < 2048):
+				# 	print( "------------FAILSAFE-------------")
+				# 	print( "Failsafe is incorporated to prevent gear shear in Model O")
+				# 	print( "Motor encoder postion: ", enc)
+				# 	input = raw_input("As an XM Motor, we can automatically fix this issue for motor " + str(i) + ", proceed? [ENTER]")
+				# 	# self.servos[i].enable_extended_position_control_mode()
+				# 	self.servos[i].move_to_encoder(self.servos[i].settings['max_encoder']+100)
+				# 	time.sleep(self.pause)
+				# 	# self.servos[i].disable_extended_position_control_mode()
+				# 	# time.sleep(self.pause)
+				# 	print( "Fixed servo from ID: "+repr(servo_ids[i]))
 			#Finally, limit the abduction_torque if desired
 			if self.abduction_limit !=1:
 				self.servos[0].enable_current_position_control_mode(self.abduction_limit)
@@ -365,8 +367,11 @@ class Model_O(OpenHand):
 	OVERSHOOT = 0.15
 
 	#RESET THE MOTOR MINS FOR FASTER INITIALIZATION
-	motorDir = [1,1,-1,1] # one finger is opposite due to placement on the openhand base
-	motorMin = [0.0,0.22,0.13,0.27]
+	
+	motorDir = [-1,1,-1,1] # one finger is opposite due to placement on the openhand base..NOTE: for the research Reflex hand the adduct joint is now reversed
+
+	#motorMin = [0.0,0.22,0.13,0.27]
+	motorMin = [0.0, 0.22, 0, 0.0]
 	adduct_amount = 0.37
 	motorMax = [motorMin[0]+adduct_amount,motorMin[1]+max_close,motorMin[2]+max_close,motorMin[3]+max_close] #RX and MX motors may use an offset of 0.48 instead of 0.40
 
@@ -392,7 +397,7 @@ class Model_O(OpenHand):
 	def reset(self):
 		self.release()
 		time.sleep(0.5)
-		self.moveMotor(0,0.)	#moves fingers into lateral pinch mode with fingers orthogonal to thumb
+		self.moveMotor(0,0.)
 
 	def release(self):
 		self.moveMotor(1,0.)
@@ -418,7 +423,7 @@ class Model_O(OpenHand):
 				self.motorMax[index]=val+self.max_close
 			else:	#case of the adduction motor
 				self.motorMin[index]=val
-				self.motorMax[index]=val+0.5
+				self.motorMax[index]=val+1.0#self.max_close #0.5
 			self.reset()
 			print( 'Index changed successfully...')
 
@@ -437,12 +442,12 @@ class Model_O(OpenHand):
 
 	#adduct fingers - then power close
 	def power_close(self,amnt=0.6):
-		adduct_loc, enc = self.readHand()
-		if(adduct_loc[0] < 0.95):
-			self.release()
-			time.sleep(1) #pause for 1 second to allow release
-			self.adduct(1)  #move fingers facing thumb
-			time.sleep(1)
+		# adduct_loc, enc = self.readHand()
+		# if(adduct_loc[0] < 0.95):
+		# 	self.release()
+		# 	time.sleep(1) #pause for 1 second to allow release
+		# 	self.adduct(1)  #move fingers facing thumb
+		# 	time.sleep(1)
 		self.close(amnt)
 
     	#Example why torque control is required for fingertip manipulation
@@ -574,7 +579,7 @@ class Model_T42(OpenHand):
 	max_torque = 1
 	modes = [True, True] #True if in position control
 
-	max_close = 0.75
+	max_close = 0.7
 	motorDir = [1,1]
 	motorMin = [0.05,0.05]
 	motorMax = [motorMin[0]+max_close,motorMin[1]+max_close]
@@ -584,7 +589,7 @@ class Model_T42(OpenHand):
 
 	def __init__(self,port="/dev/ttyUSB0",s1=1,s2=2,dyn_model="RX", s1_min = motorMin[0], s2_min = motorMin[1]):
 		#s1: "forefinger"
-		#s2: "thumb"
+		#s2: "thumb"5
 		mot_offset = [s1_min,s2_min]
 
 		if(mot_offset != self.motorMin):  #update motor mins if initialized to different values
@@ -906,3 +911,59 @@ class Model_T(OpenHand):
 		self.servos[0].kill_cont_turn()			#back to position mode
 		self.servos[0].apply_speed(self.servo_speed)	#check in case it was in wheel mode
 		self.moveMotor(0,self.amnt_release)
+
+
+
+if __name__ == '__main__':
+	# T = Model_O([port name], [abduction servo[1] id], [right forward servo[2] id],[left reverse servo[3] id],[thumb servo[4] id], [Dynamixel series ("RX", "MX", "XM")])  
+	T = Model_O("/dev/ttyUSB0", 4, 1,2,3, "MX", 0.05, 0.44, 0.29, 0.46)  
+	pdb.set_trace()
+
+	## For Reflex Hand
+	# T.change_motor_min(0,0.05)
+	# T.change_motor_min(1,0.58) # index
+	# T.change_motor_min(2,0.01) # middle
+	# T.change_motor_min(3,0.55) # thumb
+
+	## For the older-handT = Model_O("/dev/ttyUSB0", 4, 1,2,3, "MX", 0.05, 0.35, 0.09, 0.47)  
+
+	# T.change_motor_min(0,-0.15)
+	# T.change_motor_min(1,0.21)
+	# T.change_motor_min(2,0.05)
+	# T.change_motor_min(3,0.26)
+
+	# # T.close([desired tendon length for close (0.0-1.0)])
+	# T.close(0)
+	# T.adduct(0)
+	T.reset()
+	T.setServoSpeed(0.02)  
+	print("reset done")
+
+	# pdb.set_trace()
+
+	inp = raw_input("== When ready to proceed, press [Enter], to abort press [n]\n")
+	if (inp == 'n'):
+		sys.exit()
+	# T.power_close(0.55)
+	T.power_close(0.4)
+	# T.reset()
+
+	inp = raw_input("== When ready to proceed, press [Enter], to abort press [n]\n")
+	if (inp == 'n'):
+		sys.exit()
+	T.power_close(0.55)
+	# T.moveMotor(3,0.85)
+	
+	# pdb.set_trace()
+	
+	inp = raw_input("== When ready to proceed, press [Enter], to abort press [n]\n")
+	if (inp == 'n'):
+		sys.exit()
+	T.close(0)
+
+	pdb.set_trace()
+	T.reset()
+	T.release()  
+
+
+	## Friction RAL: thumb range 0.68- 0.74
