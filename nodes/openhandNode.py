@@ -159,7 +159,6 @@ if __name__=="__main__":
 		servo_ids = rospy.get_param('~servo_ids')
 		port = rospy.get_param('~servo_port')
 		series = rospy.get_param('~servo_type')
-		direction = rospy.get_param('~direction')
 		motor_offset = rospy.get_param('~motor_offset',[0.])
 		abduction_limit = rospy.get_param('~abduction_limit',1)
 		if motor_offset == [0.]:
